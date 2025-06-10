@@ -32,11 +32,12 @@ if (POLICY CMP0077)
 	cmake_policy(SET CMP0077 NEW)
 endif()
 
-option(glew-cmake_BUILD_SHARED "Build the shared glew library" ON)
-option(glew-cmake_BUILD_STATIC "Build the static glew library" ON)
+option(GLEW_BUILD_SHARED "Build the shared glew library" ON)
+option(GLEW_BUILD_STATIC "Build the static glew library" ON)
+option(GLEW_INSTALL "Generate installation target" ON)
 option(USE_GLU "Use GLU" OFF)
 option(GLEW_OSMESA "Off-screen Mesa mode" OFF)
-option(PKG_CONFIG_REPRESENTATIVE_TARGET "Generate pc file for specified target as glew. libglew_static|libglew_shared" OFF)
+option(PKG_CONFIG_REPRESENTATIVE_TARGET "Generate pc file for specified target as glew. glew|glew_shared" OFF)
 option(ONLY_LIBS "Do not build executables" OFF)
 
 set(LIBGLEW_SRCS ${SRC_DIR}/glew.c)
@@ -211,35 +212,35 @@ function(set_representative_target TARGET)
 	endif()
 endfunction()
 
-if(glew-cmake_BUILD_STATIC)
-	add_library(libglew_static STATIC ${LIBGLEW_SRCS})
+if(GLEW_BUILD_STATIC)
+	add_library(glew STATIC ${LIBGLEW_SRCS})
 
-	set_representative_target(libglew_static)
+	set_representative_target(glew)
 
-	target_compile_definitions(libglew_static PUBLIC GLEW_STATIC)
-	list(APPEND GLEW_TARGETS libglew_static)
+	target_compile_definitions(glew PUBLIC GLEW_STATIC)
+	list(APPEND GLEW_TARGETS glew)
 endif()
 
-if(glew-cmake_BUILD_SHARED)
-	add_library(libglew_shared SHARED ${LIBGLEW_SRCS})
+if(GLEW_BUILD_SHARED)
+	add_library(glew_shared SHARED ${LIBGLEW_SRCS})
 
-	if(glew-cmake_BUILD_STATIC)
-		set_target_properties(libglew_shared PROPERTIES
+	if(GLEW_BUILD_STATIC)
+		set_target_properties(glew_shared PROPERTIES
 			OUTPUT_NAME "glew-shared"
 			DEBUG_POSTFIX d)
 	else()
-		set_representative_target(libglew_shared)
+		set_representative_target(glew_shared)
 	endif()
 
-	target_compile_definitions(libglew_shared PRIVATE GLEW_BUILD)
+	target_compile_definitions(glew_shared PRIVATE GLEW_BUILD)
 	if(MINGW)
 		if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
-			target_link_options(libglew_shared PRIVATE -nostdlib)
+			target_link_options(glew_shared PRIVATE -nostdlib)
 		else()
-			target_link_libraries(libglew_shared PRIVATE -nostdlib)
+			target_link_libraries(glew_shared PRIVATE -nostdlib)
 		endif()
 	endif()
-	list(APPEND GLEW_TARGETS libglew_shared)
+	list(APPEND GLEW_TARGETS glew_shared)
 endif()
 
 foreach(GLEW_TARGET ${GLEW_TARGETS})
@@ -256,13 +257,15 @@ if(PKG_CONFIG_REPRESENTATIVE_TARGET)
 		REQUIRES ${pc_requires})
 endif()
 
-install(TARGETS ${GLEW_TARGETS} EXPORT glew-cmake
-       ARCHIVE DESTINATION ${INSTALL_LIBDIR}
-       LIBRARY DESTINATION ${INSTALL_LIBDIR})
-install(EXPORT glew-cmake DESTINATION ${INSTALL_LIBDIR}/cmake/glew FILE glewConfig.cmake)
+if(GLEW_INSTALL)
+	install(TARGETS ${GLEW_TARGETS} EXPORT glew-cmake
+		ARCHIVE DESTINATION ${INSTALL_LIBDIR}
+		LIBRARY DESTINATION ${INSTALL_LIBDIR})
+	install(EXPORT glew-cmake DESTINATION ${INSTALL_LIBDIR}/cmake/glew FILE glewConfig.cmake)
 
-file(GLOB PUBLIC_HEADERS "include/GL/*.h")
-install(FILES ${PUBLIC_HEADERS} DESTINATION include/GL/)
+	file(GLOB PUBLIC_HEADERS "include/GL/*.h")
+	install(FILES ${PUBLIC_HEADERS} DESTINATION include/GL/)
+endif()
 
 if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR} AND NOT ONLY_LIBS)
 	set(GLEWINFO_SRCS ${SRC_DIR}/glewinfo.c)
@@ -275,13 +278,20 @@ if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR} AND NOT ONLY_LIBS)
 	add_executable(glewinfo ${GLEWINFO_SRCS})
 	add_executable(visualinfo ${VISUALINFO_SRCS})
 
-	if(glew-cmake_BUILD_STATIC)
-		target_link_libraries(glewinfo libglew_static)
-		target_link_libraries(visualinfo libglew_static)
+	if(GLEW_BUILD_STATIC)
+		target_link_libraries(glewinfo glew)
+		target_link_libraries(visualinfo glew)
 	else()
-		target_link_libraries(glewinfo libglew_shared)
-		target_link_libraries(visualinfo libglew_shared)
+		target_link_libraries(glewinfo glew_shared)
+		target_link_libraries(visualinfo glew_shared)
 	endif()
 
-	install(TARGETS glewinfo visualinfo DESTINATION bin)
+	if(GLEW_INSTALL)
+		install(TARGETS glewinfo visualinfo DESTINATION bin)
+	endif()
 endif()
+
+# Define solution tree organization
+source_group(src FILES ${LIBGLEW_SRCS})
+source_group(src FILES ${GLEWINFO_SRCS})
+source_group(src FILES ${VISUALINFO_SRCS})
