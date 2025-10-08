@@ -119,8 +119,11 @@ endif()
 
 # OS Specific dependencies
 if(APPLE)
-	find_library(AGL_LIBRARY AGL REQUIRED)
-	list(APPEND LIBRARIES ${AGL_LIBRARY})
+	# AGL has been removed from macOS SDKs since macOS 14 (Xcode 15)
+    message(STATUS "Skipping AGL framework (deprecated on macOS >= 14)")
+    # Do NOT add AGL to LIBRARIES
+	#find_library(AGL_LIBRARY AGL REQUIRED)
+	#list(APPEND LIBRARIES ${AGL_LIBRARY})
 elseif(NOT WIN32)
 	if(GLEW_OSMESA)
 		find_library(OSMESA_LIBRARY OSMesa REQUIRED)
